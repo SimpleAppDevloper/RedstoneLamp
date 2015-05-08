@@ -45,7 +45,7 @@ public class PacketHandler implements Runnable {
 				case MinecraftPacket.JoinPacket:
 					pkt = new JoinPacket(packet, network.serverID, clientAddress, ((short) clientPort), network); //Start logging the player in
 					// this line added only for testing. This line of code needs to move to Custom Packet or appropriate place
-					this.server.addPlayer(clientAddress, clientPort, network.serverID /* TODO needs to replace with clientID*/); 
+					//this.server.addPlayer(clientAddress, clientPort, network.serverID /* TODO needs to replace with clientID*/);
 				break;
 				
 				case MinecraftPacket.RakNetReliability:
@@ -73,22 +73,18 @@ public class PacketHandler implements Runnable {
 		}
 	}
 	
-	public void encapsulatedDecode(byte[] buffer) {
+	public boolean encapsulatedDecode(byte[] buffer) {
 		CustomPacket pk = CustomPacket.fromBuffer(buffer);
-		//TODO: Send ACK, Increment Sequence numbers, etc.
-		for(CustomPacket.EncapsulatedPacket ep : pk.packets){
-			handleDataPacket(ep);
+		for(ProtocolSession session : network.getSessions()){
+			if(session.getClientAddress().getAddress().toString() == clientAddress.toString()){
+				session.handleDataPacket(pk);
+				return true;
+			}
 		}
-	}
-
-	public void handleDataPacket(CustomPacket.EncapsulatedPacket ep) {
-		byte pid = ep.buffer[0];
-		switch(pid){
-			//TODO: Handle here
-			case (byte) MinecraftPacket.MessagePacket:
-				processMessage();
-				break;
-		}
+		ProtocolSession session = new ProtocolSession(packet.getSocketAddress(), network);
+		network.openSession(session);
+		session.handleDataPacket(pk);
+		return true;
 	}
 
 	/*

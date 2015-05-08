@@ -1,10 +1,17 @@
 package raknet;
 
+import raknet.packets.ACKPacket;
 import raknet.packets.CustomPacket;
+import raknet.packets.NACKPacket;
+import redstonelamp.Player;
 import redstonelamp.Server;
+import redstonelamp.clock.CallableTask;
+import redstonelamp.utils.MinecraftPacket;
+import redstonelamp.utils.NetworkUtils;
 
 import java.io.IOException;
 import java.net.DatagramPacket;
+import java.net.InetSocketAddress;
 import java.net.SocketAddress;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -15,6 +22,8 @@ import java.util.Map;
  */
 public class ProtocolSession {
 
+    private Player player;
+
     private int nextSeqNum = 1;
     private int lastSeqNum = -1;
     private int nextMessageIndex = 1;
@@ -24,7 +33,9 @@ public class ProtocolSession {
     private ArrayList<Integer> NACKQueue;
     private Map<Integer, CustomPacket> recoveryQueue = new HashMap();
 
-    private SocketAddress clientAddress;
+    private int updateTaskId;
+
+    private InetSocketAddress clientAddress;
     private Server server;
 
     /**
@@ -51,8 +62,14 @@ public class ProtocolSession {
      * @param server The Server object.
      */
     public ProtocolSession(SocketAddress clientAddress, Server server) {
-        this.clientAddress = clientAddress;
+        this.clientAddress = (InetSocketAddress) clientAddress;
         this.server = server;
+
+        try {
+            updateTaskId = server.getTicker().registerTask(new CallableTask(server.getTicker(), 10, "updateQueues", (Object) this));
+        } catch (NoSuchMethodException e) {
+            e.printStackTrace();
+        }
     }
 
     /**
@@ -63,12 +80,36 @@ public class ProtocolSession {
         //TODO: Called every 5-10 ticks
         synchronized (ACKQueue){
             if(!ACKQueue.isEmpty()) {
-                //TODO: Send ACK Packet
+                ACKPacket ack = new ACKPacket();
+                ack.seqNums = new int[ACKQueue.size()];
+                for(int i = 0; i < ack.seqNums.length; i++){
+                    ack.seqNums[i] = ACKQueue.get(i);
+                }
+                ack.encode();
+                try {
+                    sendPacket(ack.buf);
+                } catch (IOException e) {
+                    e.printStackTrace();
+                } finally {
+                    ACKQueue.clear();
+                }
             }
         }
         synchronized (NACKQueue){
             if(!NACKQueue.isEmpty()){
-                //TODO: Send NACK Packet
+                NACKPacket nack = new NACKPacket();
+                nack.seqNums = new int[NACKQueue.size()];
+                for(int i = 0; i < nack.seqNums.length; i++){
+                    nack.seqNums[i] = NACKQueue.get(i);
+                }
+                nack.encode();
+                try {
+                    sendPacket(nack.buf);
+                } catch (IOException e) {
+                    e.printStackTrace();
+                } finally {
+                    NACKQueue.clear();
+                }
             }
         }
         synchronized (currentQueue){
@@ -78,6 +119,8 @@ public class ProtocolSession {
                     sendPacket(currentQueue.toBytes());
                 } catch (IOException e) {
                     e.printStackTrace();
+                } finally {
+                    currentQueue.packets.clear();
                 }
             }
         }
@@ -125,7 +168,11 @@ public class ProtocolSession {
             }
             byte pid = ep.buffer[0];
             switch(pid){
-                //TODO: Handle packets
+
+                case MinecraftPacket.ClientConnect:
+                    player = this.server.getLamp().addPlayer(clientAddress.getAddress(),clientAddress.getPort(), 0 /*Fake*/, this);
+                    server.getLogger().info("Got ClientConnect!");
+                    break;
             }
         }
     }
@@ -138,5 +185,13 @@ public class ProtocolSession {
     public void sendPacket(byte[] buffer) throws IOException {
         DatagramPacket dp = new DatagramPacket(buffer, buffer.length, clientAddress);
         server.socket.send(dp);
+    }
+
+    public Player getPlayer(){
+        return player;
+    }
+
+    public InetSocketAddress getClientAddress(){
+        return clientAddress;
     }
 }

@@ -6,6 +6,7 @@ import java.net.UnknownHostException;
 import java.util.ArrayList;
 import java.util.HashMap;
 
+import raknet.ProtocolSession;
 import redstonelamp.logger.Logger;
 import redstonelamp.utils.RedstoneLampProperties;
 import redstonelamp.utils.StringCast;
@@ -49,6 +50,11 @@ public class RedstoneLamp implements Runnable {
 	
 	public void initiateShutdown() {
 		running = false;
+		try {
+			server.getTicker().Stop();
+		} catch (InterruptedException e) {
+			e.printStackTrace();
+		}
 		System.exit(0);
 	}
 	
@@ -88,7 +94,7 @@ public class RedstoneLamp implements Runnable {
 		return true;
 	}
 	
-	public void addPlayer(InetAddress i, int p, long cid) {
+	public Player addPlayer(InetAddress i, int p, long cid, ProtocolSession session) {
 		if(currentPlayer(i, p) == null) {
 			boolean b = false;
 			int entityID = 1009;
@@ -99,10 +105,13 @@ public class RedstoneLamp implements Runnable {
 					b = true;
 				}
 			}
-			players.add(new Player(i, p, entityID, cid));
+			Player player = new Player(i, p, entityID, cid, session);
+			players.add(player);
 			connectedPlayers++;
 			logger.info("Connected players: " + players.size());
+			return player;
 		}
+		return null;
 	}
 	
 	public void removePlayer(InetAddress i, int p) {

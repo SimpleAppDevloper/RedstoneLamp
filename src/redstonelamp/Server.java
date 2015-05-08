@@ -11,6 +11,8 @@ import java.util.ArrayList;
 import java.util.Random;
 
 import raknet.PacketHandler;
+import raknet.ProtocolSession;
+import redstonelamp.clock.RedstoneTicker;
 import redstonelamp.cmd.Command;
 import redstonelamp.cmd.CommandRegistrationManager;
 import redstonelamp.cmd.CommandSender;
@@ -39,16 +41,21 @@ public class Server extends Thread {
 	
 	private boolean isListening;
 	private RedstoneLamp redstone;
+	private RedstoneTicker ticker;
 	public DatagramSocket socket;
 	private DatagramPacket packet;
 	public long serverID;
 	private Random rnd = new Random();
+	private ArrayList<ProtocolSession> sessions = new ArrayList<>();
 	public long start;
 	public Player[] players;
 	
 	public Server(RedstoneLamp redstonelamp, String name, String motd, String port, String whitelist, String announce_player_achievements, String spawn_protection, String max_players, String allow_cheats, String spawn_animals, String spawn_mobs, String gamemode, String force_gamemode, String hardcore, String pvp, String difficulty, String generator_settings, String level_name, String seed, String level_type, String query, String rcon, String rcon_pass, String auto_save, String enable_plugins) throws SocketException {
 		isListening = false;
 		Thread.currentThread().setName("RedstoneLamp");
+
+		ticker = new RedstoneTicker(20);
+
 		this.name = name;
 		this.motd = motd;
 		this.port = StringCast.toInt(port);
@@ -136,6 +143,7 @@ public class Server extends Thread {
 	
 	public void run() {
 		start = System.currentTimeMillis();
+		ticker.start();
 		while(isListening) {
 			byte[] buffer = new byte[1536];
 			packet = new DatagramPacket(buffer, 1536);
@@ -413,6 +421,21 @@ public class Server extends Thread {
 		
 		return false;
 	}
-	
+
+	public void openSession(ProtocolSession session){
+		sessions.add(session);
+	}
+
+	public RedstoneLamp getLamp(){
+		return redstone;
+	}
+
+	public RedstoneTicker getTicker(){
+		return ticker;
+	}
+
+	public ArrayList<ProtocolSession> getSessions(){
+		return sessions;
+	}
 	
 }

@@ -16,6 +16,9 @@ public class MinecraftPacket {
 	//Data Packets
 	public static final int RakNetReliability = 0x84;
 
+	//Encapsulated Login
+	public static final byte ClientConnect = 0x09;
+
 	//Encapsulated Packets
 	public static final int MessagePacket = 0x85;
 }

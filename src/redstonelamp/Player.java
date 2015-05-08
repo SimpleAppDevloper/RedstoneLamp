@@ -1,9 +1,12 @@
 package redstonelamp;
 
+import raknet.ProtocolSession;
+
 import java.net.InetAddress;
 
 public class Player {
 	public InetAddress clientAddress;
+	private ProtocolSession session;
 	public int clientPort;
 	public int packetCount;
 	public int dataCount;
@@ -19,7 +22,7 @@ public class Player {
 	public short metadata;
 	public boolean isConnected;
 	
-	public Player(InetAddress i, int p, int eid, long cid) {
+	public Player(InetAddress i, int p, int eid, long cid, ProtocolSession session) {
 		clientAddress = i;
 		clientPort = p;
 		packetCount = 0;
